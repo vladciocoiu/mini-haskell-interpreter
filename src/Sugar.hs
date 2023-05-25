@@ -10,7 +10,9 @@ desugarVar v = makeIndexedVar (getVar v)
 -- IndexedVar {ivName = "x", ivCount = 0}
 
 sugarVar :: IndexedVar -> Var
-sugarVar v = Var (ivName v) 
+sugarVar v
+    | ivCount v == 0 = Var (ivName v) 
+    | otherwise = Var (ivName v ++ "_" ++ show (ivCount v))
 
 -- >>> sugarVar (IndexedVar "x" 0)
 -- Var {getVar = "x"}
