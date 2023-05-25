@@ -26,4 +26,4 @@ data Exp
   = X IndexedVar
   | Lam IndexedVar Exp
   | App Exp Exp
-  deriving (Show)
+  deriving (Show, Eq)
