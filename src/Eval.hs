@@ -19,14 +19,9 @@ vars (App x y) = vars x ++ vars y
 -- [IndexedVar {ivName = "x", ivCount = 0}]
 
 freeVars :: Exp -> [IndexedVar]
-freeVars = freeVars' []
-
-freeVars' :: [IndexedVar] -> Exp -> [IndexedVar]
-freeVars' boundVars (X v)
-  | v `elem` boundVars = []
-  | otherwise = [v] 
-freeVars' boundVars (Lam v x) = freeVars' (v : boundVars) x
-freeVars' boundVars (App x y) = freeVars' boundVars x ++ freeVars' boundVars y
+freeVars (X v) = [v]
+freeVars (App x y) = freeVars x ++ freeVars y
+freeVars (Lam v x) = delete v (freeVars x)
 
 
 -- >>> freeVars (Lam (makeIndexedVar "x") (X (makeIndexedVar "y")))
@@ -84,7 +79,7 @@ substitute toReplace replacement (Lam v x)
     | v /= toReplace && v `notElem` freeVars replacement = Lam v (substitute toReplace replacement x)
     | otherwise = 
         let 
-            fresh = freshVar v (vars replacement)
+            fresh = freshVar v (vars x ++ vars replacement)
         in Lam fresh (substitute toReplace replacement (renameVar v fresh x))
 substitute toReplace replacement (App x y) = App (substitute toReplace replacement x) (substitute toReplace replacement y)
 
@@ -95,7 +90,7 @@ substitute toReplace replacement (App x y) = App (substitute toReplace replaceme
 -- App (Lam (IndexedVar {ivName = "x", ivCount = 1}) (X (IndexedVar {ivName = "x", ivCount = 0}))) (X (IndexedVar {ivName = "z", ivCount = 0}))
 -- (/x -> y) z [y := x]  ----- (/x1 -> x) z
 normalize :: Exp -> Exp
-normalize (App (Lam v x) y) = substitute v y x
+normalize (App (Lam v x) y) =  substitute v (normalize y) x
 -- normalize (App (Lam v x) y) = substitute v (normalize y) (normalize x) -- for applicative order
 normalize (App x y) = App (normalize x) (normalize y)
 normalize (Lam v x) = Lam v (normalize x)
