@@ -1,0 +1,51 @@
+
+id a := a ;
+const x y := x ;
+flip f x y := f y x ;
+dot g f x := g (f x) ;
+
+true f t := t ;
+false f t := f ;
+bool f t b := b f t ;
+
+ite b t e := bool e t b ;
+and a b := ite a b a ;
+or a b := ite a a b ;
+not := bool true false ;
+xor a b := or (and a (not b)) (and b (not a)) ;
+
+nothing n j := n ;
+just x n j := j x ;
+maybe n j m := m n j ;
+
+fromMaybe a x := maybe a id x ;
+isNothing x := maybe true (const false) x ;
+isJust x := dot not isNothing x ;
+
+pair a b f := f a b ;
+uncurry f p := p f ;
+
+curry f x y := f (pair x y) ;
+fst p := uncurry (const p) ;
+snd p := uncurry (flip (const p));
+
+zero f i := i ;
+succ n f i := f (n f i) ;
+iter f i n := n f i ;
+
+one := succ zero ;
+add x y := iter succ x y ;
+mul x y := iter (add x) zero y ;
+exp b e := iter (mul b) one e ;
+
+pred x := iter (dot just (maybe zero succ)) nothing x ;
+isZero x := iter (const false) true x ;
+sub m n := iter (maybe nothing pred) (just m) n ;
+lt m n := isNothing (sub m n) ;
+gt := flip lt ;
+gte m n := not (lt m n) ;
+lte := flip gte ;
+eq m n := and (lte m n) (lte n m) ;
+max m n := bool m n (lte m n) ;
+
+
