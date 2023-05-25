@@ -17,7 +17,7 @@ data ComplexExp -- ComplexExp ::= "(" ComplexExp")"
 data IndexedVar = IndexedVar
   { ivName :: String
   , ivCount :: Int
-  } deriving (Eq, Read, Show)
+  } deriving (Eq, Read, Show, Ord)
 
 makeIndexedVar :: String -> IndexedVar
 makeIndexedVar name = IndexedVar name 0
