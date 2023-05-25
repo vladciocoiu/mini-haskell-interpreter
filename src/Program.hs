@@ -1,8 +1,8 @@
 
 module Program where
 import Exp
-import Lab2 ( Parser, endOfInput, whiteSpace, reserved, semiSep1, string, lexeme, semiSep1, semi )
-import Parsing ( expr, var, testParse, haskellId, exprParser )
+import Lab2 ( Parser, endOfInput, whiteSpace, reserved, semiSep1, string, lexeme, semiSep1, semi, haskellId )
+import Parsing ( expr, var, testParse, exprParser )
 import Sugar ( desugarExp, desugarVar )
 import Eval ( substitute, normalize )
 
@@ -57,16 +57,14 @@ programEnv :: [Definition] -> Environment
 programEnv pgm = Map.fromList [(desugarVar (defHead def), desugarExp (definitionExp def)) | def <- pgm]
 
 normalizeEnv :: Environment -> Exp -> Exp
-normalizeEnv env (App (Lam v x) y) = substitute v (normalizeEnv env y) x
--- normalizeEnv env (App (Lam v x) y) = substitute v (normalizeEnv env y) (normalizeEnv env x) -- for applicative order
-normalizeEnv env (App x y) = App (normalizeEnv env x) (normalizeEnv env y)
-normalizeEnv env (Lam v x) = Lam v (normalizeEnv env x)
 normalizeEnv env (X v) = case Map.lookup v env of
   Nothing -> X v
   Just value -> normalizeEnv env value
+normalizeEnv env (Lam v x) = Lam v (normalizeEnv env x)
+normalizeEnv env (App (Lam v x) y) = normalizeEnv env (substitute v y x)
 
--- TODO solve this bug
--- miniHaskell> (/x -> /y -> y) ((/x -> x x)(/x -> x x)) (/z -> z)
--- (/y -> y) (/z -> z)
--- miniHaskell> (/y -> y) (/z -> z)
--- /z -> z
+-- in order to implement the call-by-name strategy
+-- we have to normalize x first, then the whole App, and only then y
+normalizeEnv env (App x y)
+    | normalizeEnv env x == x = App x (normalizeEnv env y)
+    | otherwise = normalizeEnv env (App (normalizeEnv env x) y)

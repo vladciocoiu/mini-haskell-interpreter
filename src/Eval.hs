@@ -90,15 +90,15 @@ substitute toReplace replacement (App x y) = App (substitute toReplace replaceme
 -- App (Lam (IndexedVar {ivName = "x", ivCount = 1}) (X (IndexedVar {ivName = "x", ivCount = 0}))) (X (IndexedVar {ivName = "z", ivCount = 0}))
 -- (/x -> y) z [y := x]  ----- (/x1 -> x) z
 normalize :: Exp -> Exp
-normalize (App (Lam v x) y) =  substitute v (normalize y) x
--- normalize (App (Lam v x) y) = substitute v (normalize y) (normalize x) -- for applicative order
-normalize (App x y) = App (normalize x) (normalize y)
-normalize (Lam v x) = Lam v (normalize x)
 normalize (X v) = X v
+normalize (Lam v x) = Lam v (normalize x)
+normalize (App (Lam v x) y) =  normalize (substitute v y x)
+normalize (App x y)
+    | normalize x == x = App x (normalize y)
+    | otherwise = normalize (App (normalize x) y)
 
 -- >>> normalize (X (makeIndexedVar "x"))
 -- X (IndexedVar {ivName = "x", ivCount = 0})
 
 -- >>> normalize (App (Lam (IndexedVar {ivName = "y", ivCount = 0}) (X (IndexedVar {ivName = "x", ivCount = 0}))) (App (Lam (IndexedVar {ivName = "y", ivCount = 0}) (App (X (IndexedVar {ivName = "y", ivCount = 0})) (X (IndexedVar {ivName = "y", ivCount = 0})))) (Lam (IndexedVar {ivName = "y", ivCount = 0}) (App (X (IndexedVar {ivName = "y", ivCount = 0})) (X (IndexedVar {ivName = "y", ivCount = 0}))))))
 -- X (IndexedVar {ivName = "x", ivCount = 0})
-
