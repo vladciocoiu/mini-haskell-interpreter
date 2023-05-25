@@ -226,3 +226,13 @@ parseFromFile parser file
     case apply parser str of
         [] -> return $ Left "Cannot parse"
         (a,_):_ -> return $ Right a
+
+haskellId :: Parser String
+haskellId = identifier (satisfy isAlpha) (satisfy isAlphaNum)
+
+haskellOp :: Parser String
+haskellOp = identifier opSymbol opSymbol
+  where
+    opSymbol = satisfy isOp
+    isOp = (`elem` "`~!@#$%^&*_+=|<>.?/")
+
