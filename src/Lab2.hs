@@ -6,6 +6,7 @@ import Control.Applicative
 
 newtype Parser a = Parser { apply :: String -> [(a, String)] }
 
+
 satisfy :: (Char -> Bool) -> Parser Char
 satisfy p = Parser go
     where
@@ -14,14 +15,14 @@ satisfy p = Parser go
             | p c = [(c, input)]
             | otherwise = []
 
--- accepta orice caracter
+-- accepts any character
 anychar :: Parser Char
 anychar = Parser go
     where
         go [] = []
         go (c:input) = [(c, input)] 
 
---- | acceptă doar caracterul dat ca argument
+-- only accepts the character ch
 char :: Char -> Parser Char
 char ch = Parser go
     where 
@@ -30,13 +31,14 @@ char ch = Parser go
             | c == ch = [(c, input)]
             | otherwise = []
 
+-- accepts any string
 anystring :: Parser String
 anystring = Parser go
     where 
         go [] = []
         go str = [(str, "")]
 
---- | acceptă o cifră
+-- accepts any digit
 digit :: Parser Char
 digit = Parser go
     where
@@ -45,7 +47,7 @@ digit = Parser go
             | isDigit c = [(c, input)]
             | otherwise = []
 
---- | acceptă un spațiu (sau tab, sau sfârșit de linie)
+-- accepts space / tab / newline
 space :: Parser Char
 space = Parser go
     where
@@ -54,7 +56,7 @@ space = Parser go
             | isSpace c = [(c, input)]
             | otherwise = []
 
---- | acceptă + sau -
+-- accepts + or -
 plusMinus :: Parser Char
 plusMinus = Parser go
     where
@@ -63,7 +65,7 @@ plusMinus = Parser go
             | c == '+' || c == '-' = [(c, input)]
             | otherwise = []
 
---- | succes doar dacă am șirul de intrare este vid
+-- accepts the empty string
 endOfInput :: Parser ()
 endOfInput = Parser go
     where
@@ -79,44 +81,29 @@ instance Applicative Parser where
 
 parse :: Parser a -> String -> Either String a
 parse p str
-    | null (apply (p <* endOfInput) str) = Left "Sirul de intrare nu a fost complet consumat sau parsare ambigua"
+    | null (apply (p <* endOfInput) str) = Left "String not completely parsed / ambiguous parsing"
     | otherwise = Right (fst (head (apply p str)))
--- parse p str
---     | [(a, "")] <- apply (p <* endOfInput) str = Right a
---     | otherwise = Left "Sirul de intrare nu a fost complet consumat sau parsare ambigua"
 
 instance Monad Parser where
     pa >>= k = Parser (\input -> [(b, restb) | (a, resta) <- apply pa input, (b, restb) <- apply (k a) resta])
 
 
-cifraIntreParanteze :: Parser Int
-cifraIntreParanteze = do
+digitBetweenParans :: Parser Int
+digitBetweenParans = do
     char '('
     d <- digit
     char ')'
     return (digitToInt d)
 
-cifraSemn :: Parser Int
-cifraSemn = do
+signedDigit :: Parser Int
+signedDigit = do
     sign <- plusMinus
     d <- digit
     return (if sign == '+' then digitToInt d else -(digitToInt d))
 
 string :: String -> Parser String
--- string "" = Parser go
---     where
---         go c = [("", c)]
-
--- string (s:str) = Parser go
---     where
---         go [] = []
---         go (c:input)
---             | null (apply (string str) input) = []
---             | c == s = [(c : fst (head (apply (string str) input)), snd (head (apply (string str) input)))]
---             | otherwise = []
 string [] = return [] 
 string (ch:s) = pure (:) <*> char ch <*> string s
-
 
 
 instance Alternative Parser where
@@ -130,54 +117,50 @@ naiveNatural = string2Int <$> naiveNat
             <|> pure (:[]) <*> digit
     string2Int = foldl (\n d -> 10 * n + digitToInt d) 0
 
--- | Elimină zero sau mai multe apariții ale lui `space`
+-- removes some spaces or no spaces
 whiteSpace :: Parser ()
 whiteSpace = many space *> return ()
 
--- elimina unul sau mai multe spatii
+-- removes some spaces
 someWhiteSpace :: Parser ()
 someWhiteSpace = some space *> return ()
 
--- | parses a natural number (one or more digits)
+-- parses a natural number (one or more digits)
 nat :: Parser Int
 nat = string2Int <$> some digit
     where 
     string2Int = foldl (\n d -> 10 * n + digitToInt d) 0
 
 
--- | aplică un parser, și elimină spațiile de după
+-- applies a parser and removes whitespace after
 lexeme :: Parser a -> Parser a
 lexeme p = p <* whiteSpace
 
--- | parses a natural number and skips the space after it
+-- parses a natural number and skips the space after it
 natural :: Parser Int
 natural = lexeme nat
 
--- | Parses the string and skips whiteSpace after it
+-- Parses the string and skips whiteSpace after it
 symbol :: String -> Parser String
 symbol = lexeme . string
 
--- | Parses the string, skips whiteSpace, returns unit
+-- Parses the string, skips whiteSpace, returns unit
 reserved :: String -> Parser ()
 reserved s = symbol s *> return ()
 
--- | parsează virgulă, eliminând spațiile de după
+-- parses comma and removes whitespace
 comma :: Parser ()
 comma = reserved ","
 
--- | parsează argumentul intre paranteze rotunde
---   elimină spațiile de după paranteze
+-- parses the argument between parantheses and removes whitespace
 parens :: Parser a -> Parser a
 parens p = reserved "(" *> p <* reserved ")"
 
--- | parsează argumentul intre paranteze pătrate
---   elimină spațiile de după paranteze
+-- same as parens but with square brackets
 brackets :: Parser a -> Parser a
 brackets p = reserved "[" *> p <* reserved "]"
 
--- | una sau mai multe instanțe, separate de virgulă,
---   cu eliminarea spațiilor de după fiecare virgulă
---   intoarce lista obiectelor parsate
+-- one or more instances of p, separated with comma
 commaSep1 :: Parser a -> Parser [a]
 commaSep1 p
   = do
@@ -185,14 +168,11 @@ commaSep1 p
     as <- many (comma *> p)
     return (a : as)
 
--- | zero sau mai multe instanțe, separate de virgulă,
---   cu eliminarea spațiilor de după fiecare virgulă
---   intoarce lista obiectelor parsate
+-- zero or more instances of p, separated with comma
 commaSep :: Parser a -> Parser [a]
 commaSep p = commaSep1 p <|> pure []
 
--- | date fiind parsere pentru prima literă si pentru felul literelor următoare
---   scrieți un parser pentru un identificator
+-- parses an identifier with a given first character parser and other characters parser
 ident :: Parser Char -> Parser Char -> Parser String
 ident identStart identLetter
   = do
@@ -200,16 +180,14 @@ ident identStart identLetter
     ls <- many identLetter
     return (s:ls)
 
--- | ca mai sus, dar elimină spatiile de după
+-- same as ident but removes whitespace
 identifier :: Parser Char -> Parser Char -> Parser String
 identifier start letter = lexeme (ident start letter)
 
 semi :: Parser ()
 semi = reserved ";"
 
--- | una sau mai multe instanțe, separate de punct-și-virgulă,
--- cu eliminarea spațiilor de după fiecare punct-și-virgulă
--- intoarce lista obiectelor parsate
+-- one or more instances separated by ;
 semiSep1 :: Parser a -> Parser [a]
 semiSep1 p
     = do
@@ -217,8 +195,7 @@ semiSep1 p
         as <- many (semi *> p)
         return (a : as)
 
--- | citește un fișier și aplică analiza sintactică specificată asupra
--- conținutului său
+-- reads from file and applies parser
 parseFromFile :: Parser a -> FilePath -> IO (Either String a)
 parseFromFile parser file
     = do
