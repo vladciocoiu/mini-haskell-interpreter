@@ -12,13 +12,17 @@ stack exec interpreter-exe
 ### Usage
 
 ```
-// Load a miniHaskell file
+-- Load a miniHaskell file
 miniHaskell> :l file.mhs
+```
 
-// Evaluate a lambda-expression
+```
+-- Evaluate a lambda-expression
 miniHaskell> (/x -> x y) a
 a y
+```
 
-// Quit the miniHaskell interpreter
+```
+-- Quit the miniHaskell interpreter
 miniHaskell> :q
 ```
